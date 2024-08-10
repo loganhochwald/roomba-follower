@@ -1,5 +1,6 @@
 import cv2
 import sys
+import math
 
 s = 0
 if len(sys.argv) > 1:
@@ -71,17 +72,36 @@ while cv2.waitKey(1) != 27:
             coords_label = f"({center_x}, {center_y})"
             cv2.putText(frame, coords_label, (center_x + 10, center_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
 
-            # Determine the direction to move based on the dot's position relative to the origin
-            # putText will be replaced with moving the roomba's position
-            if center_x > frame_width // 2:
-                cv2.putText(frame, "Move Right", (center_x + 10, center_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif center_x < frame_width // 2:
-                cv2.putText(frame, "Move Left", (center_x + 10, center_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            # Calculate the angle relative to the top of the circle (0 degrees)
+            delta_x = center_x - (frame_width // 2)
+            delta_y = (frame_height // 2) - center_y  # Inverted y-axis to match the coordinate system
+            
+            angle = math.degrees(math.atan2(delta_x, delta_y))  # atan2(x, y) to get angle in degrees
 
-            if center_y > frame_height // 2:
-                cv2.putText(frame, "Move Forwards", (center_x + 10, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif center_y < frame_height // 2:
-                cv2.putText(frame, "Move Backwards", (center_x + 10, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            # Map angle to -180 to 180 degrees
+            if angle > 180:
+                angle -= 360
+            elif angle < -180:
+                angle += 360
+
+            # Draw the circle with the angle indicated
+            circle_center = (frame_width // 2, frame_height // 2)
+            circle_radius = 100  # Adjust radius as needed
+
+            # Draw the circle
+            cv2.circle(frame, circle_center, circle_radius, (0, 255, 255), 2)
+
+            # Calculate distance from the origin to the detected point
+            distance = math.sqrt(delta_x**2 + delta_y**2)
+
+            # Draw the extended line from the origin to the point
+            end_x = int(circle_center[0] + distance * math.sin(math.radians(angle)))
+            end_y = int(circle_center[1] - distance * math.cos(math.radians(angle)))
+            cv2.line(frame, circle_center, (end_x, end_y), (255, 0, 255), 2)
+
+            # Display angle
+            angle_label = f"Angle: {angle:.2f}"
+            cv2.putText(frame, angle_label, (frame_width // 2 - 50, frame_height // 2 + circle_radius + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
     t, _ = net.getPerfProfile()
     cv2.imshow(win_name, frame)
